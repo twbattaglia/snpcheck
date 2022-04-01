@@ -1,4 +1,4 @@
-#' Peform SNP check
+#' Perform SNP check
 #'
 #' @param snp_table A number
 #' @param study Study identifier to include
@@ -124,18 +124,19 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
     }
 
     # Output into dataframe
-    res = data.frame("Sample_1" = sample1.name,
-                     "Sample_2" = sample2.name,
-                     "Total_skipped" = total_skipped,
-                     "Total_usable" = total_usable,
-                     "Total_failed" = total_failed,
-                     "Total_identical" = total_identical,
-                     "Percent_identical" = percent_identical,
-                     "Total_different" = total_different,
-                     "Percent_different" = percent_different,
-                     "Total_distance" = total_distance,
-                     "FINAL" = FINAL,
-                     "Remarks" = FINAL_REASON)
+    res = tibble("Sample_1" = sample1.name,
+                 "Sample_2" = sample2.name,
+                 "Total_skipped" = total_skipped,
+                 "Total_usable" = total_usable,
+                 "Total_failed" = total_failed,
+                 "Total_identical" = total_identical,
+                 "Percent_identical" = percent_identical,
+                 "Total_different" = total_different,
+                 "Percent_different" = percent_different,
+                 "Total_distance" = total_distance,
+                 "FINAL" = FINAL,
+                 "Remarks" = FINAL_REASON,
+                 "DATA" = list(tibble(snps.sub.compare)))
     all_comparisons[[i]] = res
     all_tables[[i]] = snps.sub.compare
   }
@@ -143,8 +144,6 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
   # Merge all results together
   message("Finished...")
   output = do.call(rbind, all_comparisons)
-  #list(scores = output, tables = all_tables)
-
   return(output)
 }
 
