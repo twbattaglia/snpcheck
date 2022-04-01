@@ -8,21 +8,30 @@
 #' @param distance_max Maximun distance of changing SNP loci
 #' @return Dataframe of pairwise comparisons
 #' @export
-perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minimum = 18, identical_minimum = 18, distance_max = 4) {
+perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minimum = 18, identical_minimum = 18, distance_max = 4, check_blood = F) {
 
   # Load libraries
   library(tidyverse)
   library(progress)
 
-  # Get headers
+  # Error checking (TODO)
   message("Importing global SNP data...")
   snps = snp_table
 
-  # Filter (if selected)
-  if(!is.null(sample)) {
+  # Perform sample-sample or sample-blood comparisons
+  if(!check_blood){
+    # Filter to keep a selected set of samples that have the same ID
+    if(!is.null(sample)) {
+      snps = snps %>%
+        filter(STUDY %in% study) %>%
+        filter(SAMPLE %in% sample)
+      message(paste0("Found ", nrow(snps), " samples..."))
+    } else {
+      stop("Please enter a sample identifier (e.g 066, 079, 111)")
+    }
+  } else{
     snps = snps %>%
-      filter(STUDY %in% study) %>%
-      filter(SAMPLE %in% sample)
+      filter(grepl("BL", Study_ID) | grepl("PBMC", Study_ID) | Study_ID == sample)
     message(paste0("Found ", nrow(snps), " samples..."))
   }
 
@@ -38,9 +47,16 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
 
   # get combinations
   message("Getting pairwise combinations...")
-  combinations = combn(snps$uniqueId, 2) %>%
-    t() %>%
-    as.data.frame()
+  if(!check_blood){
+    combinations = combn(snps$uniqueId, 2) %>%
+      t() %>%
+      as.data.frame()
+  } else{
+    combinations = combn(snps$uniqueId, 2) %>%
+      t() %>%
+      as.data.frame() %>%
+      filter((grepl(sample, V1) | (grepl(sample, V2))))
+   }
 
   # Iterate over each pairwise combination
   message(paste0("Computing ", nrow(combinations), " combinations"))
@@ -134,9 +150,9 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
                  "Total_different" = total_different,
                  "Percent_different" = percent_different,
                  "Total_distance" = total_distance,
+                 "DATA" = list(tibble(snps.sub.compare)),
                  "FINAL" = FINAL,
-                 "Remarks" = FINAL_REASON,
-                 "DATA" = list(tibble(snps.sub.compare)))
+                 "Remarks" = FINAL_REASON)
     all_comparisons[[i]] = res
     all_tables[[i]] = snps.sub.compare
   }
