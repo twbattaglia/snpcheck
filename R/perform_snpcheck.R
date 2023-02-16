@@ -71,7 +71,7 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, vecode = NUL
   message(paste0("Computing ", nrow(combinations), " combinations"))
   all_comparisons <- list()
   all_tables <- list()
-  pb <- progress_bar$new(total = nrow(combinations))
+  pb <- progress::progress_bar$new(total = nrow(combinations))
   for(i in 1:nrow(combinations)){
     pb$tick()
 
