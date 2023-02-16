@@ -1,7 +1,7 @@
 Package: snpcheck
 Type: Package
 Title: Package to determine sample swaps from SNP data.
-Version: 0.1.0
+Version: 0.1.1
 Author: Thomas W. Battaglia
 Maintainer: Thomas W. Battaglia <t.battaglia@nki.nl>
 Description: Input global table of 26 SNP panel data and determine sample swaps
@@ -11,4 +11,4 @@ Imports:
 License: MIT
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3

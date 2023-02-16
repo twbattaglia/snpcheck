@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 debug.R
+debug/*
+data-raw/*
+._*
+.DS*

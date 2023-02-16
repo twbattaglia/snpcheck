@@ -8,51 +8,60 @@
 #' @param distance_max Maximun distance of changing SNP loci
 #' @return Dataframe of pairwise comparisons
 #' @export
-perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minimum = 18, identical_minimum = 18, distance_max = 4, check_blood = F) {
-
-  # Load libraries
-  library(tidyverse)
-  library(progress)
+perform_snpcheck = function(snp_table, study = NULL, sample = NULL, vecode = NULL, usable_minimum = 18, identical_minimum = 18, distance_max = 4, check_blood = F) {
 
   # Error checking (TODO)
   message("Importing global SNP data...")
-  snps = snp_table
 
-  # Perform sample-sample or sample-blood comparisons
-  if(!check_blood){
-    # Filter to keep a selected set of samples that have the same ID
-    if(!is.null(sample)) {
-      snps = snps %>%
-        filter(STUDY %in% study) %>%
-        filter(SAMPLE %in% sample)
-      message(paste0("Found ", nrow(snps), " samples..."))
-    } else {
-      stop("Please enter a sample identifier (e.g 066, 079, 111)")
+  # Get information about VEcode sample
+  if(!is.null(vecode)){
+    temp = snp_table %>%
+      filter(CODE == vecode)
+    snps = snp_table %>%
+      filter(STUDY %in% temp$STUDY & SAMPLE %in% temp$SAMPLE)
+    message(paste0("Comparing to: ", paste0(snps$CODE, collapse = ",")))
+  } else {
+    # Perform sample-sample or sample-blood comparisons
+    if(!check_blood){
+      # Filter to keep a selected set of samples that have the same ID
+      if(!is.null(sample)) {
+        snps = snp_table %>%
+          filter(STUDY %in% study) %>%
+          filter(SAMPLE %in% sample)
+        message(paste0("Found ", nrow(snps), " samples..."))
+      } else {
+        stop("Please enter a sample identifier (e.g 066, 079, 111)")
+      }
+    } else{
+      snps = snp_table %>%
+        filter(grepl("BL", Study_ID) | grepl("PBMC", Study_ID) | Study_ID == sample)
+      message(paste0("Found ", nrow(snp_table), " samples..."))
     }
-  } else{
-    snps = snps %>%
-      filter(grepl("BL", Study_ID) | grepl("PBMC", Study_ID) | Study_ID == sample)
-    message(paste0("Found ", nrow(snps), " samples..."))
   }
 
   # Remove unneeded columns
-  snps = snps %>%
-    mutate(uniqueId = paste(Study_ID, VENUMBER, sep = "_")) %>%
+  snps.unique = snps %>%
+    mutate(uniqueId = paste(STUDY, SAMPLE, CODE, sep = "_")) %>%
     relocate(uniqueId) %>%
     group_by(uniqueId) %>%
     mutate(row = row_number()) %>%
     mutate(uniqueId = paste0(uniqueId, "_" ,row)) %>%
     select(-row) %>%
-    select(-STUDY:-VENUMBER, -Study_ID)
+    select(-STUDY:-CODE, -Study_ID)
 
   # get combinations
   message("Getting pairwise combinations...")
-  if(!check_blood){
-    combinations = combn(snps$uniqueId, 2) %>%
+  if(!check_blood & is.null(vecode)){
+    combinations = combn(snps.unique$uniqueId, 2) %>%
       t() %>%
       as.data.frame()
+  } else if(!is.null(vecode)){
+    combinations = combn(snps.unique$uniqueId, 2) %>%
+      t() %>%
+      as.data.frame() %>%
+      filter((grepl(vecode, V1) | (grepl(vecode, V2))))
   } else{
-    combinations = combn(snps$uniqueId, 2) %>%
+    combinations = combn(snps.unique$uniqueId, 2) %>%
       t() %>%
       as.data.frame() %>%
       filter((grepl(sample, V1) | (grepl(sample, V2))))
@@ -67,8 +76,9 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
     pb$tick()
 
     # Get reduced table
-    snps.sub = snps %>%
+    snps.sub = snps.unique %>%
       filter(uniqueId %in% combinations[i,]) %>%
+      select(-SAMPLE) %>%
       pivot_longer(cols = -c("uniqueId")) %>%
       pivot_wider(names_from = uniqueId, values_from = value) %>%
       rename(locus = name)
@@ -83,7 +93,9 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
     # Compute total usable sites
     total_usable = snps.sub %>%
       rowwise() %>%
-      filter(across(everything(), ~ .x != "-")) %>%
+      filter(
+        if_all(.cols = -contains("locus"),
+               .fns = ~ .x != "-")) %>%
       nrow()
 
     # Computer total failed sites
@@ -91,7 +103,8 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, usable_minim
 
     # (A-A=0 , A-B=1 , A-C=2 , B-B=0 , C-B=1)
     snps.sub.compare = snps.sub %>%
-      filter(across(everything(), ~ .x != "-")) %>%
+      filter( if_all(.cols = -contains("locus"),
+                     .fns = ~ .x != "-")) %>%
       mutate(Dist = case_when(
         .[[2]] == "A" & .[[3]] == "A" ~ 0,
         .[[2]] == "B" & .[[3]] == "B" ~ 0,
