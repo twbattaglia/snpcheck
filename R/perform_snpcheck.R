@@ -34,7 +34,7 @@ perform_snpcheck = function(snp_table, study = NULL, sample = NULL, vecode = NUL
       }
     } else{
       snps = snp_table %>%
-        filter(grepl("BL", Study_ID) | grepl("PBMC", Study_ID) | Study_ID == sample)
+        filter(grepl("BL", Study_ID) | grepl("PBMC", Study_ID) | CODE == vecode)
       message(paste0("Found ", nrow(snp_table), " samples..."))
     }
   }
